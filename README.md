@@ -46,6 +46,32 @@ Every script reads one data root, given by the environment variable `CALLMARK_DA
   corresponding author during peer review and will be archived with the published article.
   `systems/sources/` lists the public origin of every source corpus.
 
+## Trained models
+
+The trained models of the paper are on Hugging Face, in the collection "CallMark reproducibility"
+of https://huggingface.co/songbirdini. `download_models.py` places them in the data root where the
+prediction scripts read them:
+
+    python download_models.py all --data /path/to/data
+    python download_models.py whisperseg whisperid --data /path/to/data
+
+| Name | Repository | Size |
+|---|---|---|
+| `whisperseg` | `songbirdini/callmark-whisperseg` | 51 GB |
+| `whisperid` | `songbirdini/callmark-whisperid` | 46 GB |
+| `dualwhisper` | `songbirdini/callmark-dualwhisper` | 22 GB |
+| `voxaboxen` | `songbirdini/callmark-voxaboxen` | 6 GB |
+| `birdcode` | `songbirdini/callmark-birdcode` | 2 GB |
+| `naturelm` | `songbirdini/callmark-naturelm` | 47 GB |
+| `biolingual` | `songbirdini/callmark-biolingual` | 2 GB |
+| `tweetynet` | `songbirdini/callmark-tweetynet` | 4 MB |
+| `das` | `songbirdini/callmark-das` | 6 MB |
+| `mc-whisperseg` | `songbirdini/callmark-mc-whisperseg` | 18 GB |
+
+`mc-whisperseg` holds MC-WhisperSeg, the two single-sensor models and the microphone-only detector
+trained with added group audio (`multichannel/`). The cascade uses `whisperseg` and `whisperid`.
+The energy detector and the frozen-encoder probes need no trained model from here.
+
 ## Third-party code
 
 The repository contains no copies of unmodified third-party code. Each system README names the
