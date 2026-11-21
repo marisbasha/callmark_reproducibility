@@ -1,0 +1,213 @@
+diff --git a/datautils.py b/datautils.py
+index a64b9a3..66019f1 100644
+--- a/datautils.py
++++ b/datautils.py
+@@ -253,7 +253,8 @@ def slice_audio_and_label( audio, label, total_spec_columns ):
+     clip_duration = total_spec_columns * label["spec_time_step"]
+     
+     num_samples_in_clip = int( np.round( clip_duration * sr ) )
+-    padded_audio = np.concatenate( [ np.zeros( num_samples_in_clip ), audio ], axis = 0 )
++    ## padding in the audio's own data type (float32) instead of float64 halves the memory
++    padded_audio = np.concatenate( [ np.zeros( num_samples_in_clip, dtype = audio.dtype ), audio ], axis = 0 )
+     padded_label = {
+         "onset": label["onset"] + clip_duration,
+         "offset": label["offset"] + clip_duration,
+@@ -293,8 +294,9 @@ def slice_audio_and_label( audio, label, total_spec_columns ):
+ 
+ def slice_audios_and_labels( audio_list, label_list, total_spec_columns ):
+     sliced_audio_list, sliced_label_list = [], []
+-    for audio, label in zip( audio_list, label_list):
+-        sliced_audios, sliced_labels = slice_audio_and_label( audio, label, total_spec_columns )
++    for index in range( len( audio_list ) ):
++        sliced_audios, sliced_labels = slice_audio_and_label( audio_list[index], label_list[index], total_spec_columns )
++        audio_list[index] = None    ## release the unsliced audio
+     
+         sliced_audio_list += sliced_audios
+         sliced_label_list += sliced_labels
+diff --git a/model.py b/model.py
+index 1053af1..ff95941 100644
+--- a/model.py
++++ b/model.py
+@@ -56,22 +56,30 @@ def download_model( model_path, ignore_cache = False ):
+     return local_model_path
+ 
+ 
+-def save_model( model, tokenizer, current_step, model_folder, max_to_keep ):
++def save_model( model, tokenizer, current_step, model_folder, max_to_keep, protect_step = None ):
++    """Save a checkpoint, then delete the oldest checkpoints beyond max_to_keep.
++    The checkpoint of protect_step (the best validation step so far) is never deleted."""
+     try:
+         model = model.module
+     except:
+         pass
+-    
+-    ckpt_list =  glob( model_folder + "/*" )
+-    tokenizer.save_pretrained( model_folder+"/checkpoint-%d"%(current_step) )
+ 
++    tokenizer.save_pretrained( model_folder+"/checkpoint-%d"%(current_step) )
+     model.config.current_step = current_step
+     model.save_pretrained( model_folder+"/checkpoint-%d"%(current_step) )
+-    
+-    if max_to_keep > 0 and len( ckpt_list ) > max_to_keep:
+-        ckpt_list.sort( key = os.path.getmtime )
+-        ckpt_name = ckpt_list[0]
+-        os.system("rm -r %s"%(ckpt_name) )
++
++    if max_to_keep <= 0:
++        return
++
++    ckpt_list = [ path for path in glob( model_folder + "/checkpoint-*" ) if os.path.isdir( path ) ]
++    protected = None
++    if protect_step is not None:
++        protected = model_folder + "/checkpoint-%d"%(protect_step)
++    candidates = [ path for path in ckpt_list if path != protected ]
++    candidates.sort( key = os.path.getmtime )
++    num_protected = 1 if protected in ckpt_list else 0
++    while len( candidates ) + num_protected > max_to_keep and len( candidates ) > 0:
++        os.system("rm -r %s"%( candidates.pop( 0 ) ) )
+         
+ def load_model( initial_model_path, total_spec_columns, dropout = 0.0):
+ 
+@@ -114,6 +122,12 @@ def load_model( initial_model_path, total_spec_columns, dropout = 0.0):
+         
+     return model, tokenizer
+ 
++def decoder_prompt_tokens( tokenizer, species_codebook ):
++    """Decoder prompt: the Whisper start tokens followed by the species token with which every
++    training target starts (datautils.VocalSegDataset)."""
++    species_token = ( species_codebook or {} ).get( "unknown", "<|unknown|>" )
++    return [ "<|startoftranscript|>", "<|en|>", "<|notimestamps|>" ] + tokenizer.tokenize( species_token )
++
+         
+ class SegmenterBase:
+     def __init__( self,  ):
+@@ -696,6 +710,7 @@ class WhisperSegmenterFast(SegmenterBase):
+         model_config = json.load(open(model_path+"/hf_model"+"/config.json"))        
+         self.total_spec_columns = model_config["total_spec_columns"]
+         self.cluster_codebook = model_config["cluster_codebook"]
++        self.species_codebook = model_config.get("species_codebook", {})
+         self.inverse_cluster_codebook = { cluster_id:cluster  for cluster, cluster_id in self.cluster_codebook.items() }
+ 
+         if "default_segmentation_config" in model_config:
+@@ -715,15 +730,15 @@ class WhisperSegmenterFast(SegmenterBase):
+             sliced_audios_features_batch = sliced_audios_features[pos:pos+batch_size]
+             actual_batch_size = len(sliced_audios_features_batch)
+             features = ctranslate2.StorageView.from_array(np.asarray([ item[2] for item in sliced_audios_features_batch ]))
+-            prompt = tokenizer.convert_tokens_to_ids(
+-                [ "<|startoftranscript|>", "<|en|>", "<|notimestamps|>"]
+-            )
++            prompt = tokenizer.convert_tokens_to_ids( decoder_prompt_tokens( tokenizer, self.species_codebook ) )
+             ## the ctranslate converted model typically requires a larger max length than the one required by the original huggingface model, so we set max_length to a large value.
+             ## Note Ctranslate Whisper does not support top_p sampling
+             model_output = model.generate(features, [ prompt for _ in range(actual_batch_size) ], 
+                                                  max_length = max_length, beam_size = num_beams,
+                                                  sampling_topk = top_k,
+-                                                 length_penalty = length_penalty
++                                                 length_penalty = length_penalty,
++                                                 ## a window without vocalizations ends right after the prompt
++                                                 suppress_blank = False
+                                               )
+             generated_text_batch = []
+             for item in model_output:
+diff --git a/train.py b/train.py
+index 3c1096e..bf5fdcc 100644
+--- a/train.py
++++ b/train.py
+@@ -67,6 +67,8 @@ if __name__ == "__main__":
+     parser.add_argument("--max_num_iterations", type = int, default = None )
+     parser.add_argument("--min_num_iterations", type = int, default = 500 )
+     parser.add_argument("--val_ratio", type = float, default = 0.0 )
++    parser.add_argument("--val_dataset_folder", default = None,
++                        help = "validate on this folder instead of a slice of every training file" )
+     
+     parser.add_argument("--max_length", type = int, default = 100 )
+     parser.add_argument("--total_spec_columns", type = int, default = 1000 )
+@@ -77,6 +79,8 @@ if __name__ == "__main__":
+     parser.add_argument("--seed", type = int, default = 66100 )
+     parser.add_argument("--weight_decay", type = float, default = 0.01 )
+     parser.add_argument("--warmup_steps", type = int, default = 100 )
++    parser.add_argument("--early_stop_patience", type = int, default = 0,
++                        help = "stop after this many validations without a new best score; 0 disables" )
+     parser.add_argument("--freeze_encoder", type = int, default = 0 )
+     parser.add_argument("--dropout", type = float, default = 0.0 )
+     parser.add_argument("--num_workers", type = int, default = 4 )
+@@ -100,7 +104,7 @@ if __name__ == "__main__":
+     if args.seed is not None:
+         np.random.seed(args.seed)  
+         
+-    if args.val_ratio == 0.0:
++    if args.val_ratio == 0.0 and args.val_dataset_folder is None:
+         args.validate_every = None
+         args.validate_per_epoch= None
+ 
+@@ -150,7 +154,10 @@ if __name__ == "__main__":
+     
+     audio_list_train, label_list_train = load_data(audio_path_list_train, label_path_list_train, cluster_codebook = cluster_codebook, n_threads = 20, default_config = default_config, ignore_cluster = args.ignore_cluster )
+ 
+-    if args.val_ratio > 0:
++    if args.val_dataset_folder is not None:
++        audio_path_list_val, label_path_list_val = get_audio_and_label_paths( args.val_dataset_folder )
++        audio_list_val, label_list_val = load_data(audio_path_list_val, label_path_list_val, cluster_codebook = cluster_codebook, n_threads = 20, default_config = default_config, ignore_cluster = args.ignore_cluster )
++    elif args.val_ratio > 0:
+         (audio_list_train, label_list_train), ( audio_list_val, label_list_val ) = train_val_split( audio_list_train, label_list_train, args.val_ratio )
+ 
+     audio_list_train, label_list_train = slice_audios_and_labels( audio_list_train, label_list_train, args.total_spec_columns )
+@@ -196,6 +203,12 @@ if __name__ == "__main__":
+     else:
+         scheduler = None
+         
++    def best_step():
++        """Step with the best validation score so far; its checkpoint must not be deleted."""
++        if len( val_score_history ) == 0:
++            return None
++        return sorted( val_score_history, key = lambda x: -x[1] )[0][0]
++
+     model.train() 
+     training_loss_value_list = []
+     val_score_history = []
+@@ -267,20 +280,21 @@ if __name__ == "__main__":
+             if ( args.save_every is not None and current_step % args.save_every == 0 ) or \
+                ( args.save_per_epoch and count == len(training_dataloader) - 1 ):
+                 model.eval()
+-                save_model( model, tokenizer, current_step, args.model_folder, args.max_to_keep )
++                save_model( model, tokenizer, current_step, args.model_folder, args.max_to_keep, best_step() )
+                 model.train()
+ 
+             if current_step >= 0.5 * args.max_num_iterations: ## training has been half-way done
+-                ## validation score keep decreasing for 2 validation steps
+-                if len( val_score_history ) >= 3 and \
+-                   val_score_history[-1][1] < val_score_history[-2][1] and \
+-                   val_score_history[-2][1] < val_score_history[-3][1]:
+-                    eary_stop = True
++                ## stop when the best validation score is early_stop_patience validations old
++                if args.early_stop_patience and len( val_score_history ) > 1:
++                    best_index = max( range(len(val_score_history)),
++                                      key = lambda i: val_score_history[i][1] )
++                    if len( val_score_history ) - 1 - best_index >= args.early_stop_patience:
++                        eary_stop = True
+             
+             if current_step >= args.max_num_iterations or eary_stop :
+                 if not os.path.exists( args.model_folder+"/checkpoint-%d"%(current_step) ):
+                     model.eval()
+-                    save_model( model, tokenizer, current_step, args.model_folder, args.max_to_keep )
++                    save_model( model, tokenizer, current_step, args.model_folder, args.max_to_keep, best_step() )
+                 break
+ 
+         if current_step >= args.max_num_iterations or eary_stop :
+@@ -306,15 +320,7 @@ if __name__ == "__main__":
+         os.system( "cp -r %s %s"%( args.model_folder+"/checkpoint-%d"%(best_checkpoint_batch_number), args.model_folder+"/final_checkpoint"  ) )
+         ### remove other checkpoints
+         os.system( "rm -r %s"%( args.model_folder+"/checkpoint-*" ) )
+-
+-        hf_model_folder = args.model_folder+"/final_checkpoint"
+-        ct2_model_folder = hf_model_folder + "_ct2"
+-        
+-        subprocess.run([ "python", os.path.join( script_dirname, "convert_hf_to_ct2.py" ), 
+-                         "--model", hf_model_folder,
+-                         "--output_dir", ct2_model_folder,
+-                         "--quantization", "int8_float16"
+-                       ])
++        ## final_checkpoint is converted to CTranslate2 by a separate step (convert_hf_to_ct2.py)
+     try:
+         os.remove( args.model_folder + "/status.json" )
+     except:

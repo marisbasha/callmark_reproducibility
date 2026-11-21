@@ -2,13 +2,22 @@
 
 This directory scores the benchmark of 11 corpora and 76 scored taxa: detection, identification,
 Detection+Identification (end-to-end) and overlap detection, with the statistical tests and the supplementary
-analyses. It starts from the published dataset and from one prediction file per system and training size.
+analyses. It starts from the published dataset and from one prediction file per system and training size. The prediction
+files are written by the systems in `../systems/`; the prepared audio and the label files by
+`../systems/data/` and `../systems/sources/`.
 
     python -m benchmark.probe --data DIR      # frozen-encoder probes: embeddings -> identification predictions
     python -m benchmark.score --data DIR      # all scores -> DIR/results/benchmark.json, tables on standard output
 
 Run from the parent directory of `benchmark/`. `--data` can be replaced by the environment variable
-`CALLMARK_DATA`. Requirements: numpy, scipy, scikit-learn, pyarrow, soundfile.
+`CALLMARK_DATA`. Requirements: numpy, scipy, scikit-learn, threadpoolctl, pyarrow, soundfile.
+
+`probe.py` needs NumPy 2 to reproduce the probe predictions exactly (verified with NumPy 2.0.2
+and 2.4.6 and scikit-learn 1.7.2, 1.8.0 and 1.9.0; the predictions were made with Python 3.11,
+NumPy 2.4.6 and scikit-learn 1.9.0). The embeddings are 32-bit floats, and NumPy 1
+and NumPy 2 round arithmetic that mixes 32-bit and 64-bit numbers differently, so the fit can
+stop at another epoch: with NumPy 1.26.4 between 89 % and 100 % of the test predictions of a
+probe agree with those of NumPy 2.
 
 | module | content |
 |---|---|

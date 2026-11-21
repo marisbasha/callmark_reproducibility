@@ -1,3 +1,4 @@
 _data/
 __pycache__/
 tools/
+systems/whisperseg/WhisperSeg/

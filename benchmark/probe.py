@@ -42,7 +42,9 @@ def fit(encoder):
     embeddings = normalized(np.load(config.embedding_file(encoder)))
     train_embeddings = embeddings[:len(train)]
     test_embeddings = embeddings[len(train):]
-    taxa = np.array([row["species"] for row in train])
+    # The taxa are encoded as integers in sorted order: early stopping fails on text labels in
+    # some scikit-learn versions, and the fitted probe is the same.
+    taxon_names, taxa = np.unique([row["species"] for row in train], return_inverse=True)
     rank = np.array([row["fewshot_rank"] for row in train])
     for size in config.SIZES:
         # The training set of a given size holds the examples with fewshot_rank below that size.
@@ -60,7 +62,8 @@ def fit(encoder):
             probe.fit(train_embeddings[in_training_set], taxa[in_training_set])
             predicted = probe.predict(test_embeddings)
         output_file = config.prediction_file(f"probe_{encoder}", "identification", size)
-        data.write_json(output_file, dict(zip(test_ids, predicted.tolist())))
+        predicted_taxa = taxon_names[predicted].tolist()
+        data.write_json(output_file, dict(zip(test_ids, predicted_taxa)))
         print(encoder, size, flush=True)
 
 
