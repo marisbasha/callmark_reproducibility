@@ -23,7 +23,7 @@ trained again with group audio labelled by MC-WhisperSeg:
 | `score.py` | caller-independent detection, caller-specific detection, overlap analyses, statistics |
 | `annotators.py` | the two manual annotations of the public recordings scored against the consolidated reference |
 | `label_groups.py` | labels unannotated group recordings with MC-WhisperSeg |
-| `added_audio_sets.py`, `added_audio_sets.json` | training sets of pair recordings plus 7.3, 29.9 or 91.2 h of labelled group audio |
+| `added_audio_sets.py`, `added_audio_sets.json` | training sets of pair recordings plus 7.3, 29.9 or 91.1 h of labelled group audio |
 | `added_audio.py` | all systems and both manual annotations on the group recordings: detection F1, frame F1, detection by number of simultaneously vocalizing birds, F1 by boundary tolerance |
 | `mcwhisperseg/` | model code, modified from MCWhisperSeg (Apache-2.0) |
 

@@ -2,7 +2,7 @@
 a function of the training audio, with the other systems and the two manual annotations.
 
 Scored are the three systems trained on the 9.4 h of pair recordings, the microphone-only
-detector trained with 7.3, 29.9 and 91.2 h of added group audio labelled by MC-WhisperSeg
+detector trained with 7.3, 29.9 and 91.1 h of added group audio labelled by MC-WhisperSeg
 (added_audio_sets.py), and the transmitter-based and microphone-based manual annotations.
 For each, against the consolidated reference with the callers pooled:
 
@@ -25,7 +25,7 @@ from score import load_predictions, maximum_matches, overlap_table
 PAIR_HOURS = 9.4
 ANNOTATIONS = ("transmitter-based", "microphone-based")
 PAIR_TRAINED_SYSTEMS = ("multichannel", "accelerometer", "microphone")
-ADDED_HOURS = {"7h": 7.3, "30h": 29.9, "91h": 91.2}
+ADDED_HOURS = {"7h": 7.3, "30h": 29.9, "91h": 91.1}
 TOLERANCES = (0.005, 0.01, 0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2)
 FRAME = 0.001
 SIMULTANEOUS = ("1", "2", "3+")
