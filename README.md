@@ -48,9 +48,9 @@ Every script reads one data root, given by the environment variable `CALLMARK_DA
 
 ## Trained models
 
-The trained models of the paper are on Hugging Face, in the collection "CallMark reproducibility"
-of https://huggingface.co/songbirdini. `download_models.py` places them in the data root where the
-prediction scripts read them:
+The trained models of the paper are on Hugging Face, in the collection
+https://huggingface.co/collections/songbirdini/callmark-reproducibility-6b02383ea0f990ac3ccf203f.
+`download_models.py` places them in the data root where the prediction scripts read them:
 
     python download_models.py all --data /path/to/data
     python download_models.py whisperseg whisperid --data /path/to/data
