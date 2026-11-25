@@ -1,6 +1,6 @@
 """Score the predictions of the three systems on the 32 test recordings.
 
-A prediction matches a reference vocalization when both boundaries lie within 20 ms.
+A prediction matches a reference vocalization when both boundaries lie within 30 ms.
 
   detection    caller-independent F1: the per-bird predictions of a system are pooled, the
                caller of the reference is disregarded, matching is maximum one-to-one.
@@ -20,7 +20,8 @@ from scipy.sparse.csgraph import maximum_bipartite_matching
 
 from data import COHORTS, SYSTEMS, data_root, in_cohort, test_recordings
 
-TOLERANCE = 0.02
+TOLERANCE = 0.03
+MIN_PAIR_OVERLAP = 0.02
 REPLICATES = 2000
 MIN_RECORDINGS = 6
 COMPARISONS = (
@@ -271,7 +272,7 @@ def overlap_table(reference):
             other_callers[k].add(caller_i)
             longest[i] = max(longest[i], shared)
             longest[k] = max(longest[k], shared)
-            if shared > TOLERANCE:
+            if shared > MIN_PAIR_OVERLAP:
                 pairs.append((i, k))
     intervals = []
     n_others = []

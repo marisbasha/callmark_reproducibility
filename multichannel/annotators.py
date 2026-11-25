@@ -2,7 +2,7 @@
 
 The consolidated reference was built from a transmitter-based annotation, made on the
 accelerometer channels, and a microphone-based annotation. Both are scored like a detector:
-caller-independent, both boundaries within 20 ms, maximum one-to-one matching.
+caller-independent, both boundaries within 30 ms, maximum one-to-one matching.
 """
 import argparse
 import json

@@ -6,7 +6,7 @@ detector trained with 7.3, 29.9 and 91.1 h of added group audio labelled by MC-W
 (added_audio_sets.py), and the transmitter-based and microphone-based manual annotations.
 For each, against the consolidated reference with the callers pooled:
 
-  f1               both boundaries within 20 ms, maximum one-to-one matching
+  f1               both boundaries within 30 ms, maximum one-to-one matching
   frame_f1         1-ms frames, vocal or not
   found            share of reference vocalizations found when 1, 2 or 3 and more birds
                    vocalize at the same time
