@@ -2,7 +2,7 @@ import os
 from glob import glob
 import pandas as pd
 from transformers import WhisperFeatureExtractor
-from transformers.audio_utils import mel_filter_bank
+from transformers.audio_utils import mel_filter_bank, spectrogram, window_function
 import librosa
 from tqdm import tqdm
 import numpy as np
@@ -57,6 +57,26 @@ class WhisperSegFeatureExtractor( WhisperFeatureExtractor ):
             mel_scale="slaney",
         )
             
+    def _absolute_features(self, waveform):
+        # Keep the original numerical floor, without a second clip-dependent floor.
+        log_power = spectrogram(
+            waveform, window_function(self.n_fft, "hann"),
+            frame_length=self.n_fft, hop_length=self.hop_length, power=2.0,
+            mel_filters=self.mel_filters, mel_floor=1e-10, log_mel="log10",
+        )
+        return ((log_power[:, :-1] + 4.0) / 4.0).astype(np.float32)
+
+    def _np_extract_fbank_features(self, waveform):
+        if os.environ.get("CALLMARK_ABSOLUTE_MEL") == "1":
+            return self._absolute_features(waveform)
+        return super()._np_extract_fbank_features(waveform)
+
+    def _torch_extract_fbank_features(self, waveform):
+        if os.environ.get("CALLMARK_ABSOLUTE_MEL") == "1":
+            return self._absolute_features(waveform)
+        return super()._torch_extract_fbank_features(waveform)
+
+
 class SpecViewer:
     def __init__( self,  ):
         self.colors = [np.array(mcolors.hex2color(color_string)) for color_string in list(mcolors.TABLEAU_COLORS.values()) + list(mcolors.CSS4_COLORS.values())][1:] # Skip the first color since it looks not so good ...

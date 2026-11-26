@@ -64,6 +64,15 @@ recording; `test_lab` recordings are normalized on loading. The public recording
 stored at 24,414.0625 Hz; `data.load_public` high-pass filters their accelerometer
 channels at 250 Hz, normalizes and resamples them.
 
+## Experimental fixed mel-power floor
+
+Set `CALLMARK_ABSOLUTE_MEL=1` for both training and prediction to use
+a fixed floor of 1e-10 in mel power. This retains the original log10 transform
+and affine scaling while removing the per-window 80 dB cutoff. With consistent
+waveform scaling, a distant click can no longer raise the floor under a quiet
+call in the same window. Input gain still matters. Leave the variable unset to
+reproduce the published checkpoint preprocessing.
+
 ## Environment
 
 Python 3.10, PyTorch 2.5.1, Transformers 4.38.2, CTranslate2 4.0.0 (requires cuDNN 8),
