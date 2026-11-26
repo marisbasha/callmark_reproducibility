@@ -317,11 +317,12 @@ def unbiased_shift_over_T(data):
 
 
 def bootstrap_p(data, resamples=4000, seed=0):
-    """Two-sided paired bootstrap over annotations: half-window versus CallMark duration RMSE.
+    """Two-sided paired bootstrap over annotations: half-window versus CallMark duration RMSE, both with the
+    one-column bound.
 
     The P value cannot be smaller than 1 / resamples.
     """
-    half_window_squared = np.square(duration_error(data, "half_window", False))
+    half_window_squared = np.square(duration_error(data, "half_window", True))
     callmark_squared = np.square(duration_error(data, "callmark", True))
     n_annotations = len(half_window_squared)
     random = np.random.default_rng(seed)
@@ -349,7 +350,7 @@ def group_accuracy(data, in_group):
     return {
         "n": int(in_group.sum()),
         "callmark_duration_rmse_ms": rmse(duration_error(group, "callmark", True)),
-        "half_window_duration_rmse_ms": rmse(duration_error(group, "half_window", False)),
+        "half_window_duration_rmse_ms": rmse(duration_error(group, "half_window", True)),
     }
 
 
@@ -404,11 +405,11 @@ def leave_one_annotator_out(data):
         n0_by_annotator[annotator] = n0
         k_by_annotator[annotator] = k
         callmark_squared = np.square(duration_error(test, "callmark", True, n0=n0))
-        noise_aware_squared = np.square(duration_error(test, "noise_aware", False, k=k))
+        noise_aware_squared = np.square(duration_error(test, "noise_aware", True, k=k))
         callmark_squared_errors.append(callmark_squared)
         noise_aware_squared_errors.append(noise_aware_squared)
         callmark_rmse.append(float(np.sqrt(callmark_squared.mean())))
-        half_window_rmse.append(rmse(duration_error(test, "half_window", False)))
+        half_window_rmse.append(rmse(duration_error(test, "half_window", True)))
 
     pooled_callmark_rmse = np.sqrt(np.concatenate(callmark_squared_errors).mean())
     pooled_noise_aware_rmse = np.sqrt(np.concatenate(noise_aware_squared_errors).mean())
@@ -492,12 +493,12 @@ def main():
             results["methods"][f"{method}_{label}"] = summary(data, method, bounded)
 
     rmse_by_annotator = {}
-    for name in ("half_window_unbounded", "callmark_bounded", "noise_aware_unbounded"):
+    for name in ("half_window_bounded", "callmark_bounded", "noise_aware_bounded"):
         by_annotator = results["methods"][name]["duration_rmse_by_annotator_ms"]
         rmse_by_annotator[name] = list(by_annotator.values())
-    half_window_rmse = rmse_by_annotator["half_window_unbounded"]
+    half_window_rmse = rmse_by_annotator["half_window_bounded"]
     callmark_rmse = rmse_by_annotator["callmark_bounded"]
-    noise_aware_rmse = rmse_by_annotator["noise_aware_unbounded"]
+    noise_aware_rmse = rmse_by_annotator["noise_aware_bounded"]
 
     bootstrap_p_by_noise = {}
     for noise in NOISE:

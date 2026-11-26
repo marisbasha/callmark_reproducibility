@@ -495,7 +495,7 @@
  "callmark_vs_half_window": {
   "wilcoxon_p": 0.0078125,
   "bootstrap_p_by_noise": {
-   "0": 0.2635,
+   "0": 0.3405,
    "5": 0.00025,
    "10": 0.00025
   }
@@ -577,18 +577,18 @@
    "A8": 0.2792133617687696
   },
   "k_mean": 0.27872985924296556,
-  "noise_aware_heldout_duration_rmse_ms": 2.972461508011826
+  "noise_aware_heldout_duration_rmse_ms": 2.9052052886991353
  },
  "blinding": {
   "blinded": {
    "n": 340,
    "callmark_duration_rmse_ms": 3.6913192310753686,
-   "half_window_duration_rmse_ms": 6.958222007874419
+   "half_window_duration_rmse_ms": 5.848551749272433
   },
   "others": {
    "n": 1019,
    "callmark_duration_rmse_ms": 3.9180880922746253,
-   "half_window_duration_rmse_ms": 7.924956085662947
+   "half_window_duration_rmse_ms": 6.1134800732242525
   },
   "permutation_p": 0.5357142857142857
  }

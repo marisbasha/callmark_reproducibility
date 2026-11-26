@@ -28,7 +28,7 @@ Each boundary is moved inwards by a shift; `T = N / fs` is the window duration.
 | `noise_aware` | T (1/2 - 1/4 cbrt(rho)) |
 
 `bounded` limits the shift so that the corrected annotation spans at least one hop length. The CallMark
-correction includes this bound.
+correction includes this bound, and the corrections are compared with the bound applied to each.
 
 ## Expected output
 
@@ -45,15 +45,15 @@ Duration RMSE (ms), key `methods.<name>.duration_rmse_ms` and `duration_rmse_by_
 
 | quantity | key | value |
 |---|---|---|
-| duration RMSE at 0 / 5 / 10 % noise, half-window | `methods.half_window_unbounded.duration_rmse_by_noise_ms` | 2.79 / 8.47 / 9.84 ms |
+| duration RMSE at 0 / 5 / 10 % noise, half-window | `methods.half_window_bounded.duration_rmse_by_noise_ms` | 2.77 / 6.52 / 7.68 ms |
 | same, CallMark | `methods.callmark_bounded.duration_rmse_by_noise_ms` | 2.63 / 3.62 / 4.99 ms |
-| same, noise-aware | `methods.noise_aware_unbounded.duration_rmse_by_noise_ms` | 2.12 / 3.06 / 3.69 ms |
+| same, noise-aware | `methods.noise_aware_bounded.duration_rmse_by_noise_ms` | 2.11 / 2.86 / 3.55 ms |
 | durations <= 0, half-window (all; by noise) | `nonpositive_duration_pct`, `..._by_noise` | 17.7 %; 6.2 / 21.2 / 25.2 % |
 | durations <= 0, noise-aware (all; by noise) | | 3.4 %; 1.6 / 4.2 / 4.3 % |
 | durations <= 0, CallMark without / with bound | | 8.1 % / 0 % |
 | duration error of harmonic stacks (raw, half-window, CallMark, noise-aware) | `duration_mape_harmonic_pct` | 76 / 33 / 17 / 13 % |
 | CallMark vs half-window across annotators, Wilcoxon | `callmark_vs_half_window.wilcoxon_p` | 0.0078 |
-| CallMark vs half-window, bootstrap at 0 / 5 / 10 % noise | `callmark_vs_half_window.bootstrap_p_by_noise` | 0.26 / 0.00025 / 0.00025 |
+| CallMark vs half-window, bootstrap at 0 / 5 / 10 % noise | `callmark_vs_half_window.bootstrap_p_by_noise` | 0.34 / 0.00025 / 0.00025 |
 | fitted constant N0 | `n0_fit.n0` | 6.40 |
 | five fitted fractions, duration RMSE | `fractions_fit.duration_rmse_ms` | 3.77 ms |
 | CallMark shift at N = 128 and 2048 | `callmark_shift_over_T` | 0.32 T, 0.43 T |
@@ -62,7 +62,7 @@ Duration RMSE (ms), key `methods.<name>.duration_rmse_ms` and `duration_rmse_by_
 | N0 refitted without each annotator | `leave_one_annotator_out.n0_range` | 5.29-6.88 |
 | held-out CallMark duration RMSE (range over annotators) | `leave_one_annotator_out.callmark_heldout_*` | 3.85 ms (3.34-4.60) |
 | held-out annotators improved over half-window, Wilcoxon | `leave_one_annotator_out.wilcoxon_p` | 8 of 8, 0.0078 |
-| noise-aware k refitted without each annotator, held-out RMSE | `leave_one_annotator_out.k_mean`, `noise_aware_heldout_duration_rmse_ms` | 0.279, 2.97 ms |
+| noise-aware k refitted without each annotator, held-out RMSE | `leave_one_annotator_out.k_mean`, `noise_aware_heldout_duration_rmse_ms` | 0.279, 2.91 ms |
 | blinded vs other annotators, CallMark | `blinding` | 3.69 vs 3.92 ms, permutation P = 0.54 |
-| blinded vs other annotators, half-window | `blinding` | 6.96 vs 7.92 ms |
+| blinded vs other annotators, half-window | `blinding` | 5.85 vs 6.11 ms |
 | display settings per annotator | `display_settings` | hop lengths, frequency ranges, number of columns |
