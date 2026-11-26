@@ -49,6 +49,9 @@ def main():
     parser.add_argument("--voxaboxen", required=True, help="Voxaboxen checkout with the changes")
     parser.add_argument("--model", required=True, choices=files.MODELS)
     parser.add_argument("--size", type=int, required=True, choices=config.SIZES)
+    parser.add_argument("--select-on-validation", action="store_true",
+                        help="validate after every epoch and keep the best weights (Voxaboxen's "
+                             "early stopping), instead of the weights of the last epoch")
     arguments = parser.parse_args()
     config.use_data_root(arguments.data)
 
@@ -62,6 +65,8 @@ def main():
     training_arguments += TRAINING_ARGUMENTS
     if arguments.model == "identification":
         training_arguments += IDENTIFICATION_ARGUMENTS
+    if arguments.select_on_validation:
+        training_arguments += ["--val-during-training", "--early-stopping"]
     with open(project_dir / "train.log", "w") as log:
         setup_arguments = [f"--data-dir={input_dir}", f"--project-dir={project_dir}"]
         run_voxaboxen(arguments.voxaboxen, "project-setup", setup_arguments, log)
